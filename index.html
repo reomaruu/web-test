@@ -1,0 +1,300 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src * data: gap: cdvfile: https://gstatic.com https://*.youtube.com https://*.youtube-nocookie.com https://*.twitter.com https://*.x.com; style-src * 'unsafe-inline'; script-src * 'unsafe-inline' 'unsafe-eval'; font-src * data:; frame-src * 'self' data: https:;">
+  <title>Liquid Glass カレンダー＆メモアプリ Pro</title>
+  
+  <script src="components/loader.js"></script>
+  <link rel="stylesheet" href="components/loader.css">
+  
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Playfair+Display:ital,wght@0,600;1,600&family=Caveat:wght@700&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="light-theme">
+
+  <div class="app-container">
+
+    <div id="home-page" class="page active">
+      <div class="container-top">
+        <div class="home-title">Home</div>
+        <div class="home-subtitle" id="home-date-label">----年--月--日</div>
+      </div>
+      
+      <div class="glass-card" style="padding: 22px 10px;">
+        <div class="time-display" id="clock-display">00:00</div>
+      </div>
+
+      <div class="glass-card" style="padding: 16px;">
+        <div style="font-size:14px; font-weight:700; margin-bottom:10px; display:flex; justify-content:between; align-items:center;">
+          <div style="display:flex; align-items:center; gap:6px;">
+            <svg id="battery-icon-svg" style="width:18px; height:18px; fill:var(--accent-color);" viewBox="0 0 24 24">
+              <path d="M16 7H3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2zM21 11h2v2h-2z"/>
+            </svg>
+            <span id="battery-status-text">battery</span>
+          </div>
+          <span id="battery-level-text" style="font-weight:800; color:var(--accent-color); font-size:15px;">--%</span>
+        </div>
+        <div class="battery-progress-bg">
+          <div id="battery-progress-bar" class="battery-progress-fill" style="width: 0%;"></div>
+        </div>
+      </div>
+      
+      <div class="glass-card">
+        <div style="font-size:15px; font-weight:700; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+          <span style="color:var(--accent-color);">●</span>今日の予定
+        </div>
+        <div id="today-memo-display" style="font-size:14px; opacity:0.85; line-height:1.5; white-space:pre-wrap;">予定はありません。</div>
+      </div>
+    </div>
+
+    <div id="calendar-page" class="page">
+      <div class="glass-card">
+        <div class="header">
+          <button class="nav-btn" onclick="prevMonth()">◀</button>
+          <div class="month-year" id="current-month-year">2026年 10月</div>
+          <button class="nav-btn" onclick="nextMonth()">▶</button>
+        </div>
+        <table class="calendar-table">
+          <thead>
+            <tr><th>日</th><th>月</th><th>火</th><th>水</th><th>木</th><th>金</th><th>土</th></tr>
+          </thead>
+          <tbody id="calendar-body"></tbody>
+        </table>
+      </div>
+
+      <div class="glass-card">
+        <div class="header" style="margin-bottom:10px;">
+          <div class="month-year" id="selected-date-label" style="font-size:16px;">日付を選択してください</div>
+          <div style="display:flex; gap:10px;">
+            <button class="nav-btn" onclick="shareCalendarMemo()" style="font-size:14px; padding:4px 8px;">共有</button>
+          </div>
+        </div>
+        
+        <textarea id="memo-input" placeholder="ここに予定やメモを入力..."></textarea>
+        
+        <div class="time-picker-row">
+          <span style="font-size:13px; font-weight:600; opacity:0.8;">リマインダー通知時間</span>
+          <input type="time" id="notify-time" class="ios-time-input" value="09:00">
+        </div>
+        
+        <div class="settings-item" style="margin-top:10px; padding:0;">
+          <div class="settings-label" style="font-size:13px; opacity:0.8;">通知を有効にする</div>
+          <label class="switch"><input type="checkbox" id="notify-toggle"><span class="slider"></span></label>
+        </div>
+
+        <button class="action-btn" onclick="saveMemo()">設定を保存</button>
+      </div>
+    </div>
+
+    <div id="search-page" class="page">
+      <div class="container-top">
+        <div class="home-title" style="font-size:28px;">search / browser</div>
+        <div class="home-subtitle">アプリ内ノート検索 ＆ Webブラウザ</div>
+      </div>
+
+      <div class="glass-card">
+        <div style="font-size:12px; font-weight:700; color:var(--sub-text); margin-bottom:6px;">マイノートの全文検索</div>
+        <div class="web-search-box">
+          <input type="text" id="internal-search-query" class="web-search-input" placeholder="ノートのタイトルを入力..." oninput="executeInAppSearch(this.value)">
+        </div>
+      </div>
+
+      <div id="search-results-output" class="search-results-list"></div>
+
+      <div class="glass-card" style="margin-top:12px;">
+        <div style="font-size:12px; font-weight:700; color:var(--sub-text); margin-bottom:6px;">Google検索 / URLを開く</div>
+        <div class="web-search-box">
+          <input type="text" id="web-search-query" class="web-search-input" placeholder="キーワードまたはURL...">
+          <button class="web-search-btn" onclick="executeWebSearch()">開く</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="files-page" class="page" style="position:relative;">
+      <div class="top-actions-container">
+        <div class="ios-circle-btn" onclick="document.getElementById('ios-context-menu').classList.toggle('active')">
+          <svg style="width:24px; height:24px; fill:var(--accent-color);" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"></circle><circle cx="12" cy="5" r="2"></circle><circle cx="12" cy="19" r="2"></circle></svg>
+        </div>
+        <div class="ios-context-menu" id="ios-context-menu">
+          <div class="menu-item" onclick="document.getElementById('ios-context-menu').classList.remove('active'); menuAction('file')">📝 新規ノート作成</div>
+          <div class="menu-item" onclick="document.getElementById('ios-context-menu').classList.remove('active'); document.getElementById('native-file-import').click()">📥 TXT読込</div>
+        </div>
+      </div>
+      <input type="file" id="native-file-import" class="hidden-input" accept=".txt" onchange="handleFileImport(event)">
+
+      <div class="container-top">
+        <div class="home-title" style="font-size:28px;">Notes</div>
+        <div class="breadcrumb" id="file-breadcrumb">位置: <span onclick="navToRoot()">メモ</span></div>
+      </div>
+
+      <div class="file-glass-panel">
+        <div class="file-grid" id="file-grid-system"></div>
+      </div>
+    </div>
+
+    <div id="text-editor" class="editor-container">
+      <div class="editor-header">
+        <button class="nav-btn" onclick="closeEditor(false)" style="padding:0;">キャンセル</button>
+        <div class="month-year" id="editor-view-title" style="font-size:16px;">エディタ</div>
+        <button class="nav-btn" onclick="closeEditor(true)" style="padding:0; font-weight:700;">保存</button>
+      </div>
+      <div class="editor-body">
+        <input type="text" id="editor-filename" class="editor-input-name" placeholder="タイトルを入力...">
+        <textarea id="editor-content" class="editor-textarea" placeholder="ここに文章を入力..."></textarea>
+      </div>
+    </div>
+
+    <div id="settings-page" class="page">
+      <div class="container-top">
+        <div class="home-title" style="font-size:28px;">Setting</div>
+        <div class="home-subtitle"></div>
+      </div>
+
+      <div class="glass-card">
+        <div class="settings-item">
+          <div>
+            <div class="settings-label">ダークモード</div>
+            <div class="settings-sublabel">システムのテーマを切り替えます</div>
+          </div>
+          <label class="switch"><input type="checkbox" id="theme-toggle" onchange="toggleTheme()"><span class="slider"></span></label>
+        </div>
+        
+        <div class="settings-divider"></div>
+        
+        <div class="settings-item" style="flex-direction:column; align-items:flex-start; gap:8px;">
+          <div>
+            <div class="settings-label">テーマカラー</div>
+            <div class="settings-sublabel">アプリ全体のアクセント色</div>
+          </div>
+          <div class="color-picker-container">
+            <div class="color-dot" style="background:#34c759;" onclick="changeAccentColor('#34c759', this)"></div>
+            <div class="color-dot" style="background:#007af5;" onclick="changeAccentColor('#007af5', this)"></div>
+            <div class="color-dot" style="background:#ff2d55;" onclick="changeAccentColor('#ff2d55', this)"></div>
+            <div class="color-dot" style="background:#af52de;" onclick="changeAccentColor('#af52de', this)"></div>
+            <div class="color-dot" style="background:#ff9500;" onclick="changeAccentColor('#ff9500', this)"></div>
+            <div class="color-dot custom-picker-dot" id="custom-color-indicator">
+              <input type="color" id="custom-color-picker" class="hidden-color-input" oninput="onCustomColorInput(this.value)">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="glass-card">
+        <div class="settings-item">
+          <div>
+            <div class="settings-label">時計のフォント種類</div>
+            <div class="settings-sublabel">ホーム画面の時計のスタイル</div>
+          </div>
+          <select id="clock-font-selector" class="ios-select" onchange="updateClockFont(this.value)">
+            <option value="font-sf">San Francisco (標準)</option>
+            <option value="font-digital">Digital Mono</option>
+            <option value="font-serif">Elegant Serif</option>
+            <option value="font-hand">Caveat Hand</option>
+          </select>
+        </div>
+
+        <div class="settings-divider"></div>
+
+        <div class="settings-item-vertical">
+          <div class="settings-label-row">
+            <div>
+              <div class="settings-label">時計の文字サイズ</div>
+              <div class="settings-sublabel">スライダーで大きさを自由に調整できます</div>
+            </div>
+            <div class="slider-value-indicator" id="clock-size-val">52px</div>
+          </div>
+          <input type="range" id="clock-size-slider" class="ios-slider-range" min="30" max="110" step="1" value="52" oninput="changeClockSizeDynamic(this.value)">
+        </div>
+
+        <div class="settings-divider"></div>
+
+        <div class="settings-item-vertical">
+          <div class="settings-label-row">
+            <div>
+              <div class="settings-label">時計の文字の太さ</div>
+              <div class="settings-sublabel">線の細さ・太さを調整できます</div>
+            </div>
+            <div class="slider-value-indicator" id="clock-weight-val">300</div>
+          </div>
+          <input type="range" id="clock-weight-slider" class="ios-slider-range" min="100" max="900" step="100" value="300" oninput="changeClockWeightDynamic(this.value)">
+        </div>
+
+        <div class="settings-divider"></div>
+
+        <div class="settings-item" style="flex-direction:column; align-items:flex-start; gap:8px;">
+          <div>
+            <div class="settings-label">時計の文字色</div>
+            <div class="settings-sublabel">背景に合わせて個別に変更可能</div>
+          </div>
+          <div class="color-picker-container">
+            <div class="color-dot" style="background:inherit; border:1px solid var(--sub-text);" onclick="changeClockTextColor('')"></div>
+            <div class="color-dot" style="background:#ffffff;" onclick="changeClockTextColor('#ffffff')"></div>
+            <div class="color-dot" style="background:#000000;" onclick="changeClockTextColor('#000000')"></div>
+            <div class="color-dot clock-picker-dot" id="clock-color-indicator">
+              <input type="color" id="clock-color-picker" class="hidden-color-input" oninput="changeClockTextColor(this.value)">
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-divider"></div>
+
+        <div class="settings-item">
+          <div>
+            <div class="settings-label">背景グラデーション</div>
+            <div class="settings-sublabel">プレミアムな背景へ変更</div>
+          </div>
+          <select id="bg-gradient-selector" class="ios-select" onchange="changeBgGradient(this.value)">
+            <option value="default">デフォルトグラス</option>
+            <option value="bg-nitro-chroma">Nitro Chroma</option>
+            <option value="bg-nitro-sunset">Liquid Sunset</option>
+            <option value="bg-nitro-cosmic">Cosmic Cyber</option>
+            <option value="bg-nitro-mint">Electric Mint</option>
+            <option value="bg-nitro-bubblegum">Bubblegum Blast</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="glass-card">
+        <div class="settings-label" style="margin-bottom:10px;">デバイスシステム情報</div>
+        <div class="device-info-box">
+          <div class="device-info-row"><span>モデル</span><span class="device-info-value" id="dev-model">ローカル環境</span></div>
+          <div class="device-info-row"><span>OSプラットフォーム</span><span class="device-info-value" id="dev-platform">Browser</span></div>
+          <div class="device-info-row"><span>OSバージョン</span><span class="device-info-value" id="dev-version">1.0.0</span></div>
+          <div class="device-info-row"><span>Cordovaコア</span><span class="device-info-value" id="dev-cordova">N/A</span></div>
+          <div class="device-info-row"><span>UUID識別子</span><span class="device-info-value" id="dev-uuid">模擬ID-XXXX</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  
+  <div id="app-web-browser" style="display:none;"></div>
+
+  <div class="taskbar">
+    <div class="tab-item active" id="tab-home" onclick="showPage('home-page')">
+      <svg class="tab-icon-svg" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+      ホーム
+    </div>
+    <div class="tab-item" id="tab-calendar" onclick="showPage('calendar-page')">
+      <svg class="tab-icon-svg" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+      カレンダー
+    </div>
+    <div class="tab-item" id="tab-search" onclick="showPage('search-page')">
+      <svg class="tab-icon-svg" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      検索/ネット
+    </div>
+    <div class="tab-item" id="tab-files" onclick="showPage('files-page')">
+      <svg class="tab-icon-svg" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+      ノート
+    </div>
+    <div class="tab-item" id="tab-settings" onclick="showPage('settings-page')">
+      <svg class="tab-icon-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+      設定
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
