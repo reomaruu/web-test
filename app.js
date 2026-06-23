@@ -16,7 +16,7 @@ let memoryMemoBackup = {};
 // 🌐 ブラウザナビゲーション＆進捗管理用オブジェクト
 let browserProgressTimer = null;
 
-// アクティブなiframeの読込進捗アニメーション（Safari風擬似バー）
+// アクティブなiframeの読込進捗アニメーション
 function simulateBrowserProgress() {
   const pBar = document.getElementById("browser-load-progress");
   if (!pBar) return;
@@ -49,9 +49,10 @@ function completeBrowserProgress() {
   }, 200);
 }
 
-// 現在選択されているアクティブなiframeを取得
 function getActiveBrowserIframe() {
-  const iframes = document.getElementById("browser-iframes-target").getElementsByTagName("iframe");
+  const target = document.getElementById("browser-iframes-target");
+  if (!target) return null;
+  const iframes = target.getElementsByTagName("iframe");
   for (let i = 0; i < iframes.length; i++) {
     if (iframes[i].style.display !== "none") {
       return iframes[i];
@@ -60,7 +61,6 @@ function getActiveBrowserIframe() {
   return iframes[0] || null;
 }
 
-// 履歴ボタンの状態更新
 function updateBrowserNavButtons() {
   const activeIframe = getActiveBrowserIframe();
   const backBtn = document.getElementById("browser-back-btn");
@@ -72,7 +72,6 @@ function updateBrowserNavButtons() {
   forwardBtn.classList.add("active");
 }
 
-// 前のページに戻る
 function goBackBrowserTab() {
   const iframe = getActiveBrowserIframe();
   if (iframe && iframe.contentWindow) {
@@ -86,7 +85,6 @@ function goBackBrowserTab() {
   }
 }
 
-// 後のページに進む
 function goForwardBrowserTab() {
   const iframe = getActiveBrowserIframe();
   if (iframe && iframe.contentWindow) {
@@ -112,7 +110,8 @@ function attachBrowserLoadListeners(iframeElement) {
     
     try {
       const currentUrl = iframeElement.contentWindow.location.href;
-      document.getElementById("browser-current-url").innerText = currentUrl;
+      const urlLabel = document.getElementById("browser-current-url");
+      if (urlLabel) urlLabel.innerText = currentUrl;
     } catch(e) {}
   });
 }
@@ -121,9 +120,12 @@ function onBrowserTabChanged() {
   updateBrowserNavButtons();
 }
 
+// Cordovaデバイス準備完了イベント
 document.addEventListener("deviceready", onDeviceReady, false);
 
 function onDeviceReady() {
+  console.log("Cordova Ready! デバイス情報を環境に適用します。");
+  
   if (window.cordova && cordova.plugins && cordova.plugins.notification) {
     cordova.plugins.notification.local.hasPermission(function (granted) {
       if (!granted) {
@@ -132,6 +134,15 @@ function onDeviceReady() {
         });
       }
     });
+  }
+
+  // 実機デバイス情報の表示更新
+  if (window.device) {
+    if (document.getElementById('dev-model')) document.getElementById('dev-model').innerText = window.device.model || '不明なモデル';
+    if (document.getElementById('dev-platform')) document.getElementById('dev-platform').innerText = window.device.platform || '不明なOS';
+    if (document.getElementById('dev-version')) document.getElementById('dev-version').innerText = window.device.version || '不明なバージョン';
+    if (document.getElementById('dev-cordova')) document.getElementById('dev-cordova').innerText = window.device.cordova || 'N/A';
+    if (document.getElementById('dev-uuid')) document.getElementById('dev-uuid').innerText = window.device.uuid || '取得失敗';
   }
 
   if (window.cordova && cordova.file && cordova.file.dataDirectory) {
@@ -167,7 +178,8 @@ function loadMemoryMemos() {
     if(stored) memoryMemoBackup = JSON.parse(stored);
   } catch(e) { memoryMemoBackup = {}; }
   fetchAllEntriesForSearch();
-  if (document.getElementById('files-page').classList.contains('active')) renderFiles();
+  const filesPage = document.getElementById('files-page');
+  if (filesPage && filesPage.classList.contains('active')) renderFiles();
 }
 
 function saveMemoryMemosToStorage() {
@@ -175,11 +187,19 @@ function saveMemoryMemosToStorage() {
   fetchAllEntriesForSearch();
 }
 
+// 画面読み込み時の初期化処理
 window.onload = function() {
-  if (!localStorage.getItem('theme')) localStorage.setItem('theme', 'dark'); 
+  if (!localStorage.getItem('theme')) localStorage.setItem('theme', 'light'); 
   if (localStorage.getItem('theme') === 'dark') {
+    document.body.classList.remove('light-theme');
     document.body.classList.add('dark-theme');
-    document.getElementById('theme-toggle').checked = true;
+    const toggle = document.getElementById('theme-toggle');
+    if (toggle) toggle.checked = true;
+  } else {
+    document.body.classList.remove('dark-theme');
+    document.body.classList.add('light-theme');
+    const toggle = document.getElementById('theme-toggle');
+    if (toggle) toggle.checked = false;
   }
   
   applyAccentColor(localStorage.getItem('accentColor') || "#34c759");
@@ -202,9 +222,19 @@ window.onload = function() {
     if(stored) memoryMemoBackup = JSON.parse(stored);
   } catch(e){}
 
+  // ブラウザ環境用のモックデバイス情報初期設定
+  if (!window.device) {
+    if (document.getElementById('dev-model')) document.getElementById('dev-model').innerText = 'Webブラウザプレビュー';
+    if (document.getElementById('dev-platform')) document.getElementById('dev-platform').innerText = navigator.platform || 'Browser';
+    if (document.getElementById('dev-version')) document.getElementById('dev-version').innerText = '1.0.0';
+    if (document.getElementById('dev-cordova')) document.getElementById('dev-cordova').innerText = 'N/A';
+    if (document.getElementById('dev-uuid')) document.getElementById('dev-uuid').innerText = 'Browser-Mock-ID';
+  }
+
   syncSecurityUIElements();
+  checkSecurityLockOnInit();
   initHome();
-  updateBatteryStatus(); // 起動時にバッテリー状況を反映
+  updateBatteryStatus(); 
   renderCalendar();
   setInterval(updateClock, 1000);
 };
@@ -213,10 +243,6 @@ function updateClockFont(fontClass) {
   currentClockFont = fontClass;
   localStorage.setItem('clockFontClass', fontClass);
   applyClockStyle();
-}
-
-function updateClockSize(sizeClass) {
-  // 互換性維持
 }
 
 function applyClockStyle() {
@@ -256,7 +282,8 @@ function scheduleNativeNotification(dateKey, memoText, timeStr) {
   
   const notificationId = hashDateKeyToInt(dateKey);
   cordova.plugins.notification.local.cancel(notificationId, function() {
-    const isNotifyEnabled = document.getElementById("notify-toggle").checked;
+    const toggle = document.getElementById("notify-toggle");
+    const isNotifyEnabled = toggle ? toggle.checked : false;
     if (!isNotifyEnabled || !memoText.trim()) return;
 
     const [year, month, day] = dateKey.split("-").map(Number);
@@ -287,13 +314,16 @@ function selectDate(key) {
   document.getElementById("selected-date-label").innerText = `${key} のメモ`;
   document.getElementById("memo-input").value = localStorage.getItem(key) || "";
   document.getElementById("notify-time").value = localStorage.getItem(key + "_notify_time") || "09:00";
-  document.getElementById("notify-toggle").checked = localStorage.getItem(key + "_notify_active") === "true";
+  
+  const toggle = document.getElementById("notify-toggle");
+  if (toggle) toggle.checked = localStorage.getItem(key + "_notify_active") === "true";
 }
 
 function saveMemo() {
   const val = document.getElementById("memo-input").value;
   const timeStr = document.getElementById("notify-time").value;
-  const isNotifyActive = document.getElementById("notify-toggle").checked;
+  const toggle = document.getElementById("notify-toggle");
+  const isNotifyActive = toggle ? toggle.checked : false;
   if (!selectedDateKey) return;
 
   if (val.trim() === "") {
@@ -307,51 +337,54 @@ function saveMemo() {
   }
 
   if(selectedDateKey === formatDateKey(new Date())) {
-    document.getElementById("today-memo-display").innerText = val.trim() === "" ? "メモはありません。" : val;
+    document.getElementById("today-memo-display").innerText = val.trim() === "" ? "予定はありません。" : val;
   }
   renderCalendar();
   scheduleNativeNotification(selectedDateKey, val, timeStr);
   alert("予定と通知設定を保存しました。");
 }
 
-// 🔋 バッテリー情報を取得してUIを更新する関数
+// 🔋 バッテリー情報を取得してUIを更新
 function updateBatteryStatus() {
   if (navigator.getBattery) {
     navigator.getBattery().then(function(battery) {
       function updateAllBatteryInfo() {
         const level = Math.floor(battery.level * 100);
-        
-        // %テキストとプログレスバーの更新
         const levelText = document.getElementById("battery-level-text");
         const progressBar = document.getElementById("battery-progress-bar");
         const statusText = document.getElementById("battery-status-text");
         
         if (levelText) levelText.innerText = level + "%";
         if (progressBar) progressBar.style.width = level + "%";
-        
-        // 充電状態（Charging）の検知とテキスト変更
         if (statusText) {
           statusText.innerText = battery.charging ? "バッテリー (充電中)" : "バッテリー";
         }
       }
-
-      // 初回実行とイベントリスナーの登録
       updateAllBatteryInfo();
-      battery.addEventListener('levelchange', updateAllBatteryInfo);
-      battery.addEventListener('chargingchange', updateAllBatteryInfo);
+      battery.onlevelchange = updateAllBatteryInfo;
+      battery.onchargingchange = updateAllBatteryInfo;
     });
   } else {
-    // APIが非対応環境の場合のフォールバック
     const statusText = document.getElementById("battery-status-text");
-    if (statusText) statusText.innerText = "バッテリー情報非対応";
+    if (statusText) statusText.innerText = "バッテリー環境 (常時100%)";
+    const levelText = document.getElementById("battery-level-text");
+    if (levelText) levelText.innerText = "100%";
+    const progressBar = document.getElementById("battery-progress-bar");
+    if (progressBar) progressBar.style.width = "100%";
   }
 }
 
 function initHome() {
   const today = new Date();
-  document.getElementById("home-date-label").innerText = today.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+  const dateLabel = document.getElementById("home-date-label");
+  if (dateLabel) {
+    dateLabel.innerText = today.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+  }
   const todayKey = formatDateKey(today);
-  document.getElementById("today-memo-display").innerText = localStorage.getItem(todayKey) || "メモはありません。";
+  const memoDisp = document.getElementById("today-memo-display");
+  if (memoDisp) {
+    memoDisp.innerText = localStorage.getItem(todayKey) || "予定はありません。";
+  }
   updateClock();
 }
 
@@ -366,17 +399,30 @@ function updateClock() {
 function showPage(pageId) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
-  document.getElementById(pageId).classList.add('active');
+  
+  const targetPage = document.getElementById(pageId);
+  if (targetPage) targetPage.classList.add('active');
   
   if (pageId === 'home-page') { 
-    document.getElementById('tab-home').classList.add('active'); 
+    if (document.getElementById('tab-home')) document.getElementById('tab-home').classList.add('active'); 
     initHome(); 
-    updateBatteryStatus(); // ホーム移動時にもバッテリー状況を更新
+    updateBatteryStatus(); 
   }
-  if (pageId === 'calendar-page') { document.getElementById('tab-calendar').classList.add('active'); renderCalendar(); }
-  if (pageId === 'search-page') document.getElementById('tab-search').classList.add('active');
-  if (pageId === 'files-page') { document.getElementById('tab-files').classList.add('active'); renderFiles(); }
-  if (pageId === 'settings-page') { document.getElementById('tab-settings').classList.add('active'); initDynamicClockSettings(); }
+  if (pageId === 'calendar-page') { 
+    if (document.getElementById('tab-calendar')) document.getElementById('tab-calendar').classList.add('active'); 
+    renderCalendar(); 
+  }
+  if (pageId === 'search-page') {
+    if (document.getElementById('tab-search')) document.getElementById('tab-search').classList.add('active');
+  }
+  if (pageId === 'files-page') { 
+    if (document.getElementById('tab-files')) document.getElementById('tab-files').classList.add('active'); 
+    renderFiles(); 
+  }
+  if (pageId === 'settings-page') { 
+    if (document.getElementById('tab-settings')) document.getElementById('tab-settings').classList.add('active'); 
+    initDynamicClockSettings(); 
+  }
 }
 
 function initDynamicClockSettings() {
@@ -472,11 +518,13 @@ function applyBgGradient(className) {
 function renderCalendar() {
   const year = displayDate.getFullYear();
   const month = displayDate.getMonth();
-  document.getElementById("current-month-year").innerText = `${year}年 ${month + 1}月`;
+  const monthYearLabel = document.getElementById("current-month-year");
+  if (monthYearLabel) monthYearLabel.innerText = `${year}年 ${month + 1}月`;
 
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const body = document.getElementById("calendar-body");
+  if (!body) return;
   body.innerHTML = "";
 
   let d = 1;
@@ -488,7 +536,9 @@ function renderCalendar() {
     for (let j = 0; j < 7; j++) {
       let c = document.createElement("td");
       if (i === 0 && j < firstDay) {
+        // 空白セル
       } else if (d > daysInMonth) {
+        // 月末以降
       } else {
         has = true;
         const key = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
@@ -519,13 +569,14 @@ function nextMonth() { displayDate.setMonth(displayDate.getMonth() + 1); renderC
 function formatDateKey(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
 
 function menuAction(t) { 
-  if(t=='file') {
+  if(t == 'file') {
     openEditorForCreate();
   }
 }
 
 function renderFiles() {
   let grid = document.getElementById("file-grid-system");
+  if (!grid) return;
   grid.innerHTML = "";
   
   const keys = Object.keys(memoryMemoBackup);
@@ -547,10 +598,11 @@ function renderFiles() {
     
     let iconDiv = document.createElement("div");
     iconDiv.className = "file-icon";
-    iconDiv.innerHTML = `<svg class="system-icon-svg" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>`;
+    iconDiv.innerHTML = `<svg class="system-icon-svg" style="width:28px; height:28px; fill:none; stroke:var(--accent-color); stroke-width:2;" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>`;
     
     let textGroup = document.createElement("div");
     textGroup.className = "file-text-group";
+    textGroup.style.cssText = "display:inline-block; margin-left:8px; vertical-align:top; max-width:70%;";
     
     let nameDiv = document.createElement("div");
     nameDiv.className = "file-name";
@@ -558,6 +610,7 @@ function renderFiles() {
     
     let previewDiv = document.createElement("div");
     previewDiv.className = "file-preview-text";
+    previewDiv.style.cssText = "font-size:11px; opacity:0.6; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;";
     previewDiv.innerText = textContent.trim() ? textContent : "内容なし";
     
     textGroup.appendChild(nameDiv);
@@ -567,14 +620,17 @@ function renderFiles() {
     
     let actionsGroup = document.createElement("div");
     actionsGroup.className = "file-actions-group";
+    actionsGroup.style.cssText = "display:flex; gap:8px; align-items:center; margin-top:6px;";
     
     let shareBtn = document.createElement("div");
     shareBtn.className = "file-share-btn";
-    shareBtn.innerHTML = `<svg class="file-share-icon" viewBox="0 0 24 24"><polyline points="16 3 21 3 21 8"></polyline><line x1="10" y1="14" x2="21" y2="3"></line><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path></svg>`;
+    shareBtn.style.cursor = "pointer";
+    shareBtn.innerHTML = `<svg class="file-share-icon" style="width:16px; height:16px; fill:none; stroke:var(--sub-text); stroke-width:2;" viewBox="0 0 24 24"><polyline points="16 3 21 3 21 8"></polyline><line x1="10" y1="14" x2="21" y2="3"></line><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path></svg>`;
     shareBtn.onclick = function(e) { e.stopPropagation(); shareNativeFile(keyName); };
     
     let delBtn = document.createElement("button");
     delBtn.className = "file-delete-btn";
+    delBtn.style.cssText = "background:transparent; border:none; color:#ff3b30; font-size:16px; font-weight:700; cursor:pointer;";
     delBtn.innerText = "×";
     delBtn.onclick = function(e) { e.stopPropagation(); deleteEntryConfirm(keyName); };
     
@@ -589,7 +645,7 @@ function renderFiles() {
 
 function updateBreadcrumb() {
   let bc = document.getElementById("file-breadcrumb");
-  bc.innerHTML = `位置: <span onclick="navToRoot()">メモ</span>`;
+  if (bc) bc.innerHTML = `位置: <span onclick="navToRoot()">メモ</span>`;
 }
 
 function navToRoot() {
@@ -603,10 +659,10 @@ function deleteEntryConfirm(keyName) {
     saveMemoryMemosToStorage();
     renderFiles();
     
-    if(currentDirectoryEntry) {
+    if(currentDirectoryEntry && typeof currentDirectoryEntry.getFile === 'function') {
       currentDirectoryEntry.getFile(keyName + ".txt", { create: false }, function(fileEntry) {
         fileEntry.remove(function(){}, function(e){});
-      });
+      }, function(e){});
     }
   }
 }
@@ -614,7 +670,7 @@ function deleteEntryConfirm(keyName) {
 let editingKeyName = null;
 function openEditorForCreate() {
   editingKeyName = null;
-  document.getElementById("editor-view-title").innerText = "新規メモ作成";
+  document.getElementById("editor-view-title").innerText = "新規ノート作成";
   document.getElementById("editor-filename").value = "";
   document.getElementById("editor-filename").disabled = false;
   document.getElementById("editor-content").value = "";
@@ -646,14 +702,14 @@ function closeEditor(save) {
   }
   saveMemoryMemosToStorage();
   
-  if(currentDirectoryEntry) {
+  if(currentDirectoryEntry && typeof currentDirectoryEntry.getFile === 'function') {
     let nativeName = (editingKeyName ? editingKeyName : filename) + ".txt";
     currentDirectoryEntry.getFile(nativeName, { create: true }, function(fileEntry) {
       fileEntry.createWriter(function(writer) {
         let blob = new Blob([content], { type: 'text/plain' });
         writer.write(blob);
       });
-    });
+    }, function(e){});
   }
 
   document.getElementById("text-editor").style.display = "none";
@@ -674,9 +730,6 @@ function handleFileImport(event) {
   reader.readAsText(file);
 }
 
-let browserTabs = []; 
-let activeTabId = null;
-
 function executeWebSearch() {
   let q = document.getElementById("web-search-query").value;
   if(!q || !q.trim()) return;
@@ -688,18 +741,17 @@ function executeWebSearch() {
     targetUrl = "https://www.google.com/search?q=" + encodeURIComponent(q.trim());
   }
   
-  // 🧭 iOSの本家Safari (SafariViewController) に極限まで近づけるための最強オプション
   let options = [
-    "location=yes",                 // 💡 本家同様、上部に現在のドメイン名（URL）をセーフエリアを考慮して表示
-    "toolbar=yes",                  // ツールバーを有効化
-    "toolbarposition=bottom",       // 💡 本家Safariと同じく、画面下部に「戻る・進む・共有・完了」を配置
-    "closebuttoncaption=完了",      // 💡 ボタン文字をiOS標準の「完了」に変更
-    "closebuttoncolor=#007aff",     // 💡 iOS純正のシステムブルー色に統一
-    "navigationbuttoncolor=#007aff",// 💡 矢印ボタン（戻る・進む）もiOS純正ブルーに統一
-    "enableViewportScale=yes",      // ピンチイン・ピンチアウトでの拡大縮小を本家同様に許可
-    "hidesecureurl=no",             // 安全な通信（https）の鍵マークを本家同様に表示
-    "presentationstyle=formsheet",  // 💡 下からふわっと浮き上がるiOS標準のシートアニメーションで開く
-    "viewportfit=cover"             // iPhoneの底面ホームインジケーターの隙間に追従させる
+    "location=yes",
+    "toolbar=yes",
+    "toolbarposition=bottom",
+    "closebuttoncaption=完了",
+    "closebuttoncolor=#007aff",
+    "navigationbuttoncolor=#007aff",
+    "enableViewportScale=yes",
+    "hidesecureurl=no",
+    "presentationstyle=formsheet",
+    "viewportfit=cover"
   ].join(",");
   
   if (window.cordova && cordova.InAppBrowser) {
@@ -709,7 +761,6 @@ function executeWebSearch() {
   }
 }
 
-// 互換性維持のための空関数（エラー防止用）
 function closeWebSearchTab() {}
 
 function fetchAllEntriesForSearch() {
@@ -721,6 +772,7 @@ function fetchAllEntriesForSearch() {
 
 function executeInAppSearch(query) {
   let out = document.getElementById("search-results-output");
+  if (!out) return;
   out.innerHTML = "";
   if(!query || !query.trim()) return;
   let q = query.toLowerCase().trim();
@@ -733,8 +785,9 @@ function executeInAppSearch(query) {
   
   filtered.forEach(function(entry) {
     let item = document.createElement("div");
-    item.className = "search-result-item";
-    item.innerHTML = `<div class="search-result-title">${entry.name}</div><div style="font-size:11px; color:var(--sub-text); margin-top:2px;">マイノート</div>`;
+    item.className = "search-result-card"; // style.cssとクラス名を一致させました
+    item.style.cssText = "padding:12px; margin-bottom:8px; cursor:pointer;";
+    item.innerHTML = `<div style="font-weight:700; font-size:14px;">${entry.name}</div><div style="font-size:11px; color:var(--sub-text); margin-top:2px;">マイノート</div>`;
     item.onclick = function() {
       openEditorForEdit(entry.name);
     };
@@ -745,71 +798,54 @@ function executeInAppSearch(query) {
 function checkSecurityLockOnInit() {
   const isLockEnabled = localStorage.getItem("app_lock_enabled") === "true";
   const hasPin = !!localStorage.getItem("app_lock_pin");
+  const lockScreen = document.getElementById("lock-screen");
+  if (!lockScreen) return;
+
   if (isLockEnabled && hasPin) {
     lockStatusMode = "auth";
-    document.getElementById("lock-screen-title").innerText = "パスコードを入力";
-    document.getElementById("bio-auth-btn").style.visibility = (localStorage.getItem("app_bio_enabled") === "true") ? "visible" : "hidden";
-    document.getElementById("lock-screen").style.display = "flex";
+    if (document.getElementById("lock-screen-title")) document.getElementById("lock-screen-title").innerText = "パスコードを入力";
+    if (document.getElementById("bio-auth-btn")) {
+      document.getElementById("bio-auth-btn").style.visibility = (localStorage.getItem("app_bio_enabled") === "true") ? "visible" : "hidden";
+    }
+    lockScreen.style.display = "flex";
     if(localStorage.getItem("app_bio_enabled") === "true") {
       setTimeout(triggerBiometricAuth, 400);
     }
   } else {
-    document.getElementById("lock-screen").style.display = "none";
+    lockScreen.style.display = "none";
   }
 }
 
 function syncSecurityUIElements() {
   const isLockEnabled = localStorage.getItem("app_lock_enabled") === "true";
-  document.getElementById("lock-toggle").checked = isLockEnabled;
+  const lockToggle = document.getElementById("lock-toggle");
+  if (lockToggle) lockToggle.checked = isLockEnabled;
   
   const bioRow = document.getElementById("bio-setting-row");
   const passRow = document.getElementById("change-pass-row");
+  const bioToggle = document.getElementById("bio-toggle");
   
   if(isLockEnabled) {
     if(bioRow) { bioRow.style.opacity = "1"; bioRow.style.pointerEvents = "auto"; }
     if(passRow) { passRow.style.opacity = "1"; passRow.style.pointerEvents = "auto"; }
-    document.getElementById("bio-toggle").checked = localStorage.getItem("app_bio_enabled") === "true";
+    if(bioToggle) bioToggle.checked = localStorage.getItem("app_bio_enabled") === "true";
   } else {
     if(bioRow) { bioRow.style.opacity = "0.5"; bioRow.style.pointerEvents = "none"; }
     if(passRow) { passRow.style.opacity = "0.5"; passRow.style.pointerEvents = "none"; }
-    document.getElementById("bio-toggle").checked = false;
-  }
-  
-  if(window.device) {
-    // Cordovaの準備が完了したタイミングで実行するイベントリスナー
-document.addEventListener('deviceready', onDeviceReady, false);
-
-function onDeviceReady() {
-    console.log("Cordova Ready! デバイス情報を取得します。");
-    
-    // 実機（Cordova環境）であれば、window.device から正しい情報が取得できます
-    if (window.device) {
-        document.getElementById('dev-model').innerText = window.device.model || '不明なモデル';
-        document.getElementById('dev-platform').innerText = window.device.platform || '不明なOS';
-        document.getElementById('dev-version').innerText = window.device.version || '不明なバージョン';
-        document.getElementById('dev-cordova').innerText = window.device.cordova || 'N/A';
-        document.getElementById('dev-uuid').innerText = window.device.uuid || '取得失敗';
-    } else {
-        // 万が一ブラウザプレビュー環境などでプラグインが読めない場合のフォールバック
-        document.getElementById('dev-model').innerText = 'PCブラウザ環境';
-        document.getElementById('dev-platform').innerText = navigator.platform;
-        document.getElementById('dev-version').innerText = '1.0.0';
-        document.getElementById('dev-cordova').innerText = 'N/A';
-        document.getElementById('dev-uuid').innerText = 'Browser-Mock-ID';
-    }
-}
+    if(bioToggle) bioToggle.checked = false;
   }
 }
 
 function toggleLockSetting() {
-  const chk = document.getElementById("lock-toggle").checked;
+  const lockToggle = document.getElementById("lock-toggle");
+  const chk = lockToggle ? lockToggle.checked : false;
   if(chk) {
     lockStatusMode = "reg_1";
     currentInputPin = "";
     updateLockDots();
-    document.getElementById("lock-screen-title").innerText = "新規の6桁パスコードを登録";
-    document.getElementById("bio-auth-btn").style.visibility = "hidden";
-    document.getElementById("lock-screen").style.display = "flex";
+    if (document.getElementById("lock-screen-title")) document.getElementById("lock-screen-title").innerText = "新規の6桁パスコードを登録";
+    if (document.getElementById("bio-auth-btn")) document.getElementById("bio-auth-btn").style.visibility = "hidden";
+    if (document.getElementById("lock-screen")) document.getElementById("lock-screen").style.display = "flex";
   } else {
     localStorage.setItem("app_lock_enabled", "false");
     localStorage.removeItem("app_lock_pin");
@@ -819,7 +855,8 @@ function toggleLockSetting() {
 }
 
 function toggleBioSetting() {
-  const chk = document.getElementById("bio-toggle").checked;
+  const bioToggle = document.getElementById("bio-toggle");
+  const chk = bioToggle ? bioToggle.checked : false;
   localStorage.setItem("app_bio_enabled", chk ? "true" : "false");
 }
 
@@ -827,9 +864,9 @@ function changePasscodeClick() {
   lockStatusMode = "reg_1";
   currentInputPin = "";
   updateLockDots();
-  document.getElementById("lock-screen-title").innerText = "新しい6桁パスコードを入力";
-  document.getElementById("bio-auth-btn").style.visibility = "hidden";
-  document.getElementById("lock-screen").style.display = "flex";
+  if (document.getElementById("lock-screen-title")) document.getElementById("lock-screen-title").innerText = "新しい6桁パスコードを入力";
+  if (document.getElementById("bio-auth-btn")) document.getElementById("bio-auth-btn").style.visibility = "hidden";
+  if (document.getElementById("lock-screen")) document.getElementById("lock-screen").style.display = "flex";
 }
 
 function pressKey(num) {
@@ -866,7 +903,7 @@ function handlePinComplete() {
   if(lockStatusMode === "auth") {
     const saved = localStorage.getItem("app_lock_pin");
     if(currentInputPin === saved) {
-      document.getElementById("lock-screen").style.display = "none";
+      if (document.getElementById("lock-screen")) document.getElementById("lock-screen").style.display = "none";
       currentInputPin = "";
       updateLockDots();
     } else {
@@ -879,12 +916,12 @@ function handlePinComplete() {
     currentInputPin = "";
     updateLockDots();
     lockStatusMode = "reg_2";
-    document.getElementById("lock-screen-title").innerText = "確認のためもう一度入力してください";
+    if (document.getElementById("lock-screen-title")) document.getElementById("lock-screen-title").innerText = "確認のためもう一度入力してください";
   } else if(lockStatusMode === "reg_2") {
     if(currentInputPin === tempRegisteredPin) {
       localStorage.setItem("app_lock_pin", currentInputPin);
       localStorage.setItem("app_lock_enabled", "true");
-      document.getElementById("lock-screen").style.display = "none";
+      if (document.getElementById("lock-screen")) document.getElementById("lock-screen").style.display = "none";
       currentInputPin = "";
       updateLockDots();
       syncSecurityUIElements();
@@ -894,7 +931,7 @@ function handlePinComplete() {
       lockStatusMode = "reg_1";
       currentInputPin = "";
       updateLockDots();
-      document.getElementById("lock-screen-title").innerText = "新規の6桁パスコードを登録";
+      if (document.getElementById("lock-screen-title")) document.getElementById("lock-screen-title").innerText = "新規の6桁パスコードを登録";
     }
   }
 }
@@ -904,15 +941,14 @@ function triggerBiometricAuth() {
     let fp = window.fingerprint || cordova.plugins.fingerprintAuth;
     fp.isAvailable(function() {
       fp.show({ clientId: "LiquidGlassApp", clientSecret: "AppSecretSafe" }, function() {
-        document.getElementById("lock-screen").style.display = "none";
+        if (document.getElementById("lock-screen")) document.getElementById("lock-screen").style.display = "none";
         currentInputPin = "";
         updateLockDots();
-      }, function() {
-      });
-    }, function() {
-    });
+      }, function() {});
+    }, function() {});
   } else {
-    document.getElementById("lock-screen").style.display = "none";
+    // ブラウザ環境では生体認証画面をスキップ
+    if (document.getElementById("lock-screen")) document.getElementById("lock-screen").style.display = "none";
     currentInputPin = "";
     updateLockDots();
   }
